@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rénovation – Milestones</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #181b22;
+    --card2: #1f232c;
+    --text: #e6e6e6;
+    --muted: #8a909c;
+    --accent: #4ade80;
+    --warn: #fbbf24;
+    --info: #60a5fa;
+    --border: #2a2f3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+  }
+  .container { max-width: 820px; margin: 0 auto; padding: 24px 16px 80px; }
+  header { margin-bottom: 24px; }
+  h1 { font-size: 1.6rem; margin: 0 0 12px; }
+  .global-progress { display: flex; align-items: center; gap: 12px; }
+  .bar { flex: 1; height: 10px; background: var(--card2); border-radius: 99px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+  .pct { font-weight: 600; min-width: 90px; text-align: right; color: var(--muted); font-size: .9rem; }
+  .actions { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    background: var(--card2); color: var(--text); border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: .85rem;
+  }
+  button:hover { border-color: var(--muted); }
+
+  .milestone {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 16px; overflow: hidden;
+  }
+  .milestone.done { border-color: var(--accent); }
+  .ms-head { padding: 16px; cursor: pointer; user-select: none; }
+  .ms-title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .ms-title h2 { font-size: 1.1rem; margin: 0; }
+  .chev { color: var(--muted); transition: transform .2s; }
+  .milestone.collapsed .chev { transform: rotate(-90deg); }
+  .ms-obj { color: var(--muted); font-size: .9rem; margin: 6px 0 10px; font-style: italic; }
+  .ms-body { padding: 0 16px 16px; }
+  .milestone.collapsed .ms-body { display: none; }
+
+  h3 { font-size: .95rem; color: var(--info); margin: 16px 0 6px; }
+  label.task {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 7px 8px; border-radius: 8px; cursor: pointer;
+  }
+  label.task:hover { background: var(--card2); }
+  label.task input {
+    margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0;
+    accent-color: var(--accent); cursor: pointer;
+  }
+  label.task.checked span { color: var(--muted); text-decoration: line-through; }
+
+  .note {
+    background: var(--card2); border-left: 3px solid var(--warn);
+    padding: 8px 12px; border-radius: 6px; font-size: .88rem; margin: 12px 0 0;
+  }
+  .note.tip { border-left-color: var(--info); }
+  .doneWhen {
+    margin-top: 12px; font-size: .88rem; color: var(--accent);
+    border-top: 1px dashed var(--border); padding-top: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🏡 Rénovation maison</h1>
+    <div class="global-progress">
+      <div class="bar"><div id="globalBar"></div></div>
+      <div class="pct" id="globalPct">0 %</div>
+    </div>
+    <div class="actions">
+      <button onclick="toggleAll(false)">Tout déplier</button>
+      <button onclick="toggleAll(true)">Tout replier</button>
+      <button onclick="resetAll()">Réinitialiser</button>
+    </div>
+  </header>
+  <main id="app"></main>
+</div>
+
+<script>
+const DATA = [
+  {
+    title: "🎯 Milestone 0 : Cadrage, diagnostics et décisions",
+    obj: "Lever les inconnues avant de dépenser ou de casser quoi que ce soit.",
+    groups: [{ tasks: [
+      "Repérage amiante (et plomb si bien d'avant 1949) avant toute dépose, ponçage ou démolition",
+      "Inspecter le conduit de cheminée par un fumiste (état, tubage)",
+      "Trancher : cheminée gardée / insert / poêle / condamnée",
+      "Demander et comparer 3 devis combles (artisans RGE si aides visées)",
+      "Comparer et valider le devis VMC (hygro B ou double flux)",
+      "Demander un devis couvreur (démoussage et inspection de toiture)",
+      "Vérifier la nature de la cloison douche/chambre parentale (porteuse ou non)",
+      "Contacter France Rénov' avant de signer les devis (aides possibles sur combles + VMC)",
+      "Mesurer tous les éléments de la cuisine et dessiner le plan à l'échelle",
+      "Récupérer les fiches techniques frigo, four, plaque, hotte, évier"
+    ]}],
+    done: "Devis validés, cheminée décidée, plan cuisine coté, aucune inconnue amiante/structure."
+  },
+  {
+    title: "🏠 Milestone 1 : Enveloppe du bâtiment (combles, VMC, toiture)",
+    obj: "Traiter ce qui est au-dessus de ta tête avant de refaire les plafonds.",
+    groups: [{ tasks: [
+      "Démoussage et nettoyage de la toiture (couvreur) + éventuel hydrofuge",
+      "Vérifier l'état de la charpente depuis les combles",
+      "Faire déposer l'ancien isolant (selon résultat amiante)",
+      "Tirer les gaines VMC dans les combles et poser le caisson",
+      "Traiter les points de passage (spots, gaines, trappe)",
+      "Poser le nouvel isolant par-dessus les gaines"
+    ]}],
+    notes: [{ type: "tip", text: "💡 Pourquoi en premier : les travaux de combles génèrent poussière et passages de gaines qui abîmeraient des peintures neuves. Démousser avant ou pendant évite de marcher sur un toit fraîchement traité." }],
+    done: "Combles isolés, VMC en service, toiture traitée."
+  },
+  {
+    title: "⚡ Milestone 2 : Réseaux (électricité et câblage)",
+    obj: "Tout ce qui passe dans les murs, avant lissage et peinture.",
+    groups: [{ tasks: [
+      "Relevé de l'existant et schéma électrique prévisionnel (salon/SAM, cuisine, bureau)",
+      "Contrôler le tableau : place pour disjoncteur dédié plaque, section de câble",
+      "Électricien : circuit spécialisé plaque induction (32 A, 6 mm²)",
+      "Électricité salon/salle à manger (prises, interrupteurs, points lumineux)",
+      "Prises réservées pour frigo, four, hotte (cuisine)",
+      "Bureau : tirer prises 230 V + RJ45 selon le plan d'aménagement",
+      "Vérifier la présence et la position des DCL au plafond dans toutes les pièces, en poser si besoin",
+      "Renforcer ou poser les crochets pour lustres lourds",
+      "Faire valider la conformité NF C 15-100"
+    ]}],
+    done: "Tout est tiré et testé, rien ne passera plus dans les murs."
+  },
+  {
+    title: "🛁 Milestone 3 : Salle de bain (chantier lourd)",
+    obj: "Le chantier le plus sale et le plus technique, à faire avant les peintures du couloir et de la chambre parentale.",
+    groups: [{ tasks: [
+      "Repérer les réseaux dans la cloison (eau, électricité)",
+      "Plan de la nouvelle salle de bain",
+      "Démolir la cloison douche/chambre parentale et reprendre le mur",
+      "Déposer baignoire/douche",
+      "Refaire plomberie (alimentations, évacuations)",
+      "Refaire l'électricité (volumes de sécurité, extracteur, différentiel)",
+      "Étanchéité (SPEC/SEL) puis carrelage murs et sol",
+      "Poser douche ou baignoire",
+      "Acheter l'établi, le poncer et le traiter (vernis résistant à l'eau) pour le meuble vasque",
+      "Installer meuble, vasque, robinetterie, miroir, luminaires"
+    ]}],
+    notes: [{ type: "warn", text: "⚠️ Vérifie les délais de séchage de l'étanchéité et des colles avant de poser la suite. Garde un point d'eau et des WC fonctionnels pendant le chantier." }],
+    done: "Salle de bain utilisable, étanche, testée en eau."
+  },
+  {
+    title: "🎨 Milestone 4 : Murs et plafonds (lissage, ponçage, peinture)",
+    obj: "Toutes les pièces propres et peintes, avant les sols.",
+    groups: [{ label: "Pièces (du plus simple au plus exposé aux travaux)", tasks: [
+      "Chambre d'amis",
+      "Bureau",
+      "Chambre parentale",
+      "Salon/salle à manger",
+      "Couloir/entrée (en dernier : zone de passage des gros travaux)",
+      "Toilettes",
+      "Cuisine (peinture lessivable)"
+    ]}],
+    notes: [
+      { type: "tip", text: "🖌️ Méthode pour chaque pièce : protéger, reboucher, enduire si besoin, poncer, sous-couche, 2 couches (plafond puis murs)." },
+      { type: "tip", text: "💡 Pour la cuisine et le salon, termine d'abord le meuble custom en béton cellulaire (Milestone 6) si tu veux éviter de repeindre autour." }
+    ],
+    done: "Toutes les pièces sont peintes, sols protégés."
+  },
+  {
+    title: "🪵 Milestone 5 : Sols (parquet et travertin)",
+    obj: "Poser les sols sur des murs déjà peints.",
+    groups: [
+      { label: "Parquet (salon/SAM, bureau, chambre d'amis, chambre parentale)", tasks: [
+        "Vérifier support (planéité, humidité résiduelle)",
+        "Choisir type et essence, calculer surface + 10 %",
+        "Sous-couche adaptée",
+        "Acclimatation 48 h",
+        "Pose avec joints de dilatation (8-10 mm)",
+        "Plinthes et barres de seuil"
+      ]},
+      { label: "Travertin cuisine", tasks: [
+        "Vérifier planéité, nature du support, hauteur disponible vs seuils",
+        "Ragréage / primaire si besoin",
+        "Choisir format, finition, colle C2, joints, calepinage",
+        "Poser, laisser sécher, jointoyer",
+        "Appliquer le protecteur hydrofuge/oléofuge"
+      ]}
+    ],
+    notes: [{ type: "tip", text: "💡 Le travertin se fait avant la pose des meubles et du plan de travail (ou en tout cas avant les éléments définitifs)." }],
+    done: "Tous les sols sont posés et protégés."
+  },
+  {
+    title: "🍳 Milestone 6 : Cuisine et meuble custom",
+    obj: "Une cuisine fonctionnelle de bout en bout.",
+    groups: [
+      { label: "Meubles", tasks: [
+        "Dégraisser et déposer façades, charnières, poignées",
+        "Réparer, poncer (grain 120 puis 180)",
+        "Sous-couche d'accrochage + 2 couches de finition",
+        "Laisser durcir plusieurs jours, remonter et régler"
+      ]},
+      { label: "Évier et plan de travail", tasks: [
+        "Adapter le meuble sous évier (découpes, renfort, hydrofuge)",
+        "Découper et poser le plan de travail (évier, plaque), traiter les chants",
+        "Poser l'évier à timbre d'office, siphon, évacuation",
+        "Poser le robinet, raccorder, tester l'étanchéité"
+      ]},
+      { label: "Crédence et appareils", tasks: [
+        "Poser la crédence, joints silicone avec le plan",
+        "Poser la hotte (conduit, fixation, prise)",
+        "Poser et raccorder la plaque à induction (raccordement validé par électricien)",
+        "Caler frigo et four selon le plan validé"
+      ]},
+      { label: "Finitions", tasks: [
+        "Poser les poignées avec gabarit de perçage"
+      ]},
+      { label: "Meuble custom en béton cellulaire (salon/cuisine)", tasks: [
+        "Plan détaillé avec cotes",
+        "Construire les montants des bibliothèques",
+        "Réaliser les portes",
+        "Vérifier aplomb, lisser, enduire, poncer, finir",
+        "Fixer les étagères avec chevilles spécifiques",
+        "Poser les portes et régler"
+      ]}
+    ],
+    done: "Cuisine utilisable (eau, cuisson, froid), meuble custom fini."
+  },
+  {
+    title: "💼 Milestone 7 : Aménagements sur mesure (bureau et dressing)",
+    obj: "Les menuiseries d'agencement, une fois sols et peintures terminés.",
+    groups: [
+      { label: "Bureau", tasks: [
+        "Plan d'aménagement validé",
+        "Fabriquer ou acheter plan de travail et caissons",
+        "Fixer et mettre à niveau",
+        "Faire valider l'installation électrique"
+      ]},
+      { label: "Dressing chambre parentale", tasks: [
+        "Mesurer précisément, définir les besoins",
+        "Plan 3D ou croquis coté",
+        "Choisir la solution (artisan, modulable, fabrication maison)",
+        "Réaliser ou commander, puis poser"
+      ]}
+    ],
+    done: "Bureau opérationnel, dressing posé."
+  },
+  {
+    title: "💡 Milestone 8 : Finitions et mobilier",
+    obj: "La couche qui rend la maison « finie ».",
+    groups: [{ tasks: [
+      "Plan d'éclairage par pièce, choix des ampoules (température de couleur cohérente)",
+      "Poser les lustres dans toutes les pièces (courant coupé au disjoncteur)",
+      "Rénover la table à manger : décaper/poncer, réparer, finition, cales de surélévation",
+      "Définir la hauteur d'assise cohérente avec la table surélevée, choisir le style",
+      "Comparer et commander les 6 chaises",
+      "Retouches de peinture finales, joints et nettoyage de fin de chantier"
+    ]}],
+    done: "La maison est vivable, éclairée et meublée."
+  }
+];
+
+const KEY = "renovation-checklist-v1";
+const KEY_COL = "renovation-collapsed-v1";
+let state = JSON.parse(localStorage.getItem(KEY) || "{}");
+let collapsed = JSON.parse(localStorage.getItem(KEY_COL) || "{}");
+
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  DATA.forEach((ms, mi) => {
+    const el = document.createElement("section");
+    el.className = "milestone" + (collapsed[mi] ? " collapsed" : "");
+    el.dataset.mi = mi;
+
+    let body = "";
+    ms.groups.forEach((g, gi) => {
+      if (g.label) body += `<h3>${g.label}</h3>`;
+      g.tasks.forEach((t, ti) => {
+        const id = `${mi}-${gi}-${ti}`;
+        const c = state[id] ? "checked" : "";
+        body += `<label class="task ${c}"><input type="checkbox" data-id="${id}" ${c}><span>${t}</span></label>`;
+      });
+    });
+    (ms.notes || []).forEach(n => body += `<div class="note ${n.type}">${n.text}</div>`);
+    body += `<div class="doneWhen">✅ <strong>Terminé quand :</strong> ${ms.done}</div>`;
+
+    el.innerHTML = `
+      <div class="ms-head">
+        <div class="ms-title"><h2>${ms.title}</h2><span class="chev">▼</span></div>
+        <div class="ms-obj">${ms.obj}</div>
+        <div class="global-progress">
+          <div class="bar"><div class="ms-bar"></div></div>
+          <div class="pct ms-pct"></div>
+        </div>
+      </div>
+      <div class="ms-body">${body}</div>`;
+    app.appendChild(el);
+
+    el.querySelector(".ms-head").addEventListener("click", () => {
+      collapsed[mi] = !collapsed[mi];
+      localStorage.setItem(KEY_COL, JSON.stringify(collapsed));
+      el.classList.toggle("collapsed");
+    });
+  });
+
+  document.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", e => {
+      state[e.target.dataset.id] = e.target.checked;
+      localStorage.setItem(KEY, JSON.stringify(state));
+      e.target.parentElement.classList.toggle("checked", e.target.checked);
+      updateProgress();
+    });
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  let total = 0, done = 0;
+  document.querySelectorAll(".milestone").forEach(el => {
+    const boxes = el.querySelectorAll("input[type=checkbox]");
+    const d = [...boxes].filter(b => b.checked).length;
+    total += boxes.length; done += d;
+    const p = Math.round(d / boxes.length * 100);
+    el.querySelector(".ms-bar").style.width = p + "%";
+    el.querySelector(".ms-pct").textContent = `${d}/${boxes.length}`;
+    el.classList.toggle("done", d === boxes.length);
+  });
+  const gp = Math.round(done / total * 100);
+  document.getElementById("globalBar").style.width = gp + "%";
+  document.getElementById("globalPct").textContent = `${gp} % (${done}/${total})`;
+}
+
+function toggleAll(col) {
+  DATA.forEach((_, i) => collapsed[i] = col);
+  localStorage.setItem(KEY_COL, JSON.stringify(collapsed));
+  render();
+}
+
+function resetAll() {
+  if (confirm("Décocher toutes les tâches ?")) {
+    state = {};
+    localStorage.removeItem(KEY);
+    render();
+  }
+}
+
+render();
+</script>
+</body>
+</html>
